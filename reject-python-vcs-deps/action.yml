@@ -1,0 +1,22 @@
+name: Fail if python VCS deps exist
+description: If any VCS dependencies are found in pyproject.toml, this action will fail.  Primarily useful for final releases.
+
+inputs:
+  pyproject-toml:
+    description: path to the pyproject.toml to check
+    required: false
+    default: pyproject-toml
+
+runs:
+  using: composite
+  steps:
+    - name: Check for VCS deps
+      shell: python
+      run: |
+        import re, tomllib
+        manifest = tomllib.load(open('pyproject.toml', 'rb'))
+        deps = manifest['build-system']['requires']
+        deps.extend(manifest['project']['dependencies'])
+        if rejects := list(filter(re.compile(r'@[^+]+').search, deps)):
+          rejects = "  \n".join(sorted(rejects))
+          raise Exception(f'VCS dependencies were detected in [build-system]:\n  {rejects}')
