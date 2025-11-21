@@ -1,0 +1,56 @@
+name: Clone or unpack a GH artifact
+description: |
+  If no artifact-id's are given, do a standard actions/clone .  If artifacts are given, fetch the artifact and unpack it.
+
+  This is best used in test workflows that you want to be able to reuse for release tests; rather than having to ifdef the
+  test setup code for clone or fetching an artifact, this action can be used instead and it's behavior changes based on if
+  a non empty artifact-id was given in the inputs.
+
+inputs:
+  artifact-id:
+    description: The artifact-id to download and unpack.  If not given, a standard actions/checkout@v5 is ran
+    required: false
+  artifact-runner-id:
+    description: |
+      Which runner generated the artifact.  This must be overridden when trying to use artifacts between jobs to access the actual artifact.
+
+      In general, this doesn't need to be manually set.  If you're doing cross workflow dispatch, then this may
+      be needed.
+    default: ${{ github.run_id }}
+  artifact-strip-components:
+    description: |
+      How many leading directories to strip from the given artifact.  For example, your release products my-package-1.0.tar.gz, and that
+      tar internally has all source under `my-package-1.0/`.  The default value of 1 ensures that everything under `my-package-1.0/` is checked out
+      directly into the desired path.
+    default: "1"
+    required: false
+  path:
+    description: Where to checkout to
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout code
+      if: inputs.artifact-id == ''
+      uses: actions/checkout@v5
+      with:
+        path: ${{ inputs.path }}
+    - name: Download artifact
+      id: download
+      if: inputs.artifact-id
+      uses: actions/download-artifact@v5
+      with:
+        artifact-ids: ${{ inputs.artifact-id }}
+        run-id: ${{ inputs.artifact-runner-id}}
+        path: __tmp-download-dir
+    - name: Unpack tarball
+      if: inputs.artifact-id
+      shell: bash
+      run: |
+        set -ex
+        p=${{ inputs.path || '.' }}
+        mkdir -p "$p"
+        tar -vxf __tmp-download-dir/*.tar.* --strip-components=${{ inputs.artifact-strip-components }} -C "$p"
+        # cleanup while we're at it.
+        rm -r __tmp-download-dir
