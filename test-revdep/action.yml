@@ -39,6 +39,10 @@ runs:
       with:
         python-version: '3.13'
 
+    - name: Upgrade pip
+      shell: bash
+      run: pip install --upgrade pip
+
     - name: Find latest pypi release of ${{ inputs.target }}
       if: ${{ inputs.use_last_release }}
       shell: bash
@@ -59,7 +63,6 @@ runs:
       shell: bash
       run: |
         set -ex
-        pip install --upgrade pip
 
         # all pip calls need to be in a *single* call.  This forces pip to bail if a later requested target
         # is incompatible with a previous one.
