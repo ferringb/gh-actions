@@ -11,7 +11,7 @@ inputs:
     description: The artifact-id to download and unpack.  If not given, a standard actions/checkout@v5 is ran
     required: false
   organization:
-    default: pkgcore
+    default: ferringb
     description: |
       Which github organization to fetch dependencies from, including the project to test when testing against git.  Ignored for tests against released versions.
   target:
