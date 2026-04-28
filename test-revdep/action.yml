@@ -43,21 +43,27 @@ runs:
       shell: bash
       run: pip install --upgrade pip
 
-    - name: Find latest pypi release of ${{ inputs.target }}
+    - name: Find latest tagged release of ${{ inputs.target }}
       if: ${{ inputs.use_last_release }}
       shell: bash
+      working-directory: ./target/
       run: |
-        set -ex
-        l=$(pip index versions "${{ inputs.target }}" > /dev/null | head -1 | sed -re 's/.*\(([^)]+)\).*$/\1/')
-        [ -z "$l" ] && { echo "couldn't find the version, failing out"; exit 1; }
-        echo LAST_RELEASE="v${l}" >> $GITHUB_ENV
+        versions=$(git ls-remote -q --refs https://github.com/pkgcore/${{ matrix.repo }}  | \
+          sed -nre 's:.*refs/tags/(.+)$:\1:p' | \
+          sort -V)
+        echo found versions:
+        echo "${versions}"
+        latest=$(echo "$versions" | tail -n 1)
+        echo "latest=${latest}"
+        [ -z "$latest" ] && { echo "failed finding the tag"; exit 1; }
+        echo "LAST_RELEASE=$latest" >> $GITHUB_ENV
 
     - name: Checkout ${{ inputs.target }} ${{ env.LAST_RELEASE != '' && env.LAST_RELEASE || '' }}
       uses: actions/checkout@v6
       with:
         repository: ${{ inputs.organization }}/${{ inputs.target }}
         path: target
-        ref: ${{ env.LAST_RELEASE != '' && format('refs/tags/{0}', env.LAST_RELEASE) || '' }}
+        ref: ${{ env.LAST_RELEASE != '' && format('refs/tags/v{0}', env.LAST_RELEASE) || '' }}
 
     - name: Install dependencies
       shell: bash
